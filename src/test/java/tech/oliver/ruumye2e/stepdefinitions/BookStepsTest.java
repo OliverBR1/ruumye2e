@@ -1,5 +1,6 @@
 package tech.oliver.ruumye2e.stepdefinitions;
 
+import io.cucumber.java.PendingException;
 import io.cucumber.java.en.And;
 import io.cucumber.java.en.Then;
 import io.cucumber.java.en.When;
@@ -9,17 +10,20 @@ import org.springframework.http.MediaType;
 import tech.oliver.ruumye2e.config.RestConfig;
 import tech.oliver.ruumye2e.config.ScenarioContext;
 import tech.oliver.ruumye2e.dto.BookingRequest;
+import tech.oliver.ruumye2e.service.BookingService;
 
 import java.time.LocalDateTime;
 
 public class BookStepsTest {
 
-    private ScenarioContext scenarioContext;
-    private RestConfig restConfig;
+    private final ScenarioContext scenarioContext;
+    private final RestConfig restConfig;
+    private final BookingService bookingService;
 
-    public BookStepsTest(ScenarioContext scenarioContext, RestConfig restConfig) {
+    public BookStepsTest(ScenarioContext scenarioContext, RestConfig restConfig, BookingService bookingService) {
         this.scenarioContext = scenarioContext;
         this.restConfig = restConfig;
+        this.bookingService = bookingService;
     }
 
     @And("the room has no bookings for today")
@@ -41,15 +45,10 @@ public class BookStepsTest {
 
         var roomId = scenarioContext.get("roomId", Long.class);
 
-        var startTime = LocalDateTime.now().plusMinutes(1);
+        var startTime = LocalDateTime.now().plusHours(1);
         var endTime = startTime.plusHours(1);
 
-        var request = new BookingRequest(roomId, startTime, endTime);
-
-        var response = restConfig.givenBackEnd()
-                .contentType(MediaType.APPLICATION_JSON_VALUE)
-                .body(request)
-                .post("/bookings");
+        var response = bookingService.book(roomId, startTime, endTime);
 
         scenarioContext.put("response", response);
     }
@@ -68,5 +67,28 @@ public class BookStepsTest {
 
         response.then()
                 .statusCode(HttpStatus.CONFLICT.value());
+    }
+
+    @And("I get the book number")
+    public void iGetTheBookNumber() {
+       var response = scenarioContext.get("response", Response.class);
+
+       var bookNumber = response.body().jsonPath().getLong("id");
+
+       scenarioContext.put("bookNumber", bookNumber);
+    }
+
+    @And("I book the room for right now")
+    public void iBookTheRoomForRightNow() {
+
+        var roomId = scenarioContext.get("roomId", Long.class);
+
+        var startTime = LocalDateTime.now().plusSeconds(3);
+        var endTime = startTime.plusHours(1);
+
+        var response = bookingService.book(roomId, startTime, endTime);
+
+        scenarioContext.put("response", response);
+
     }
 }
