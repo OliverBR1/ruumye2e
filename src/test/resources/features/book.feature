@@ -9,3 +9,10 @@ Feature: Book a room
     And the room has no bookings for today
     When I book the room for one hour from now
     Then then room should be successfully booked
+
+  Scenario:
+    Given the room "Sala Europa" exists
+    And the room has no bookings for today
+    And one user book the room for one hour from now
+    When I book the room for one hour from now
+    Then the bookings should conflict

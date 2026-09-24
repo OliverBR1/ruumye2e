@@ -3,8 +3,14 @@ package tech.oliver.ruumye2e.stepdefinitions;
 import io.cucumber.java.en.And;
 import io.cucumber.java.en.Then;
 import io.cucumber.java.en.When;
+import io.restassured.response.Response;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import tech.oliver.ruumye2e.config.RestConfig;
 import tech.oliver.ruumye2e.config.ScenarioContext;
+import tech.oliver.ruumye2e.dto.BookingRequest;
+
+import java.time.LocalDateTime;
 
 public class BookStepsTest {
 
@@ -19,15 +25,48 @@ public class BookStepsTest {
     @And("the room has no bookings for today")
     public void theRoomHasNoBookingsForToday() {
 
+        var roomId = scenarioContext.get("roomId", Long.class);
+
+        restConfig.givenBackEnd()
+                .queryParam("room_id", roomId)
+                .delete("/test-utils/bookings")
+                .then()
+                .statusCode(204);
+
     }
 
+    @And("one user book the room for one hour from now")
     @When("I book the room for one hour from now")
     public void iBookTheRoomForOneHourFromNow(){
 
+        var roomId = scenarioContext.get("roomId", Long.class);
+
+        var startTime = LocalDateTime.now().plusMinutes(1);
+        var endTime = startTime.plusHours(1);
+
+        var request = new BookingRequest(roomId, startTime, endTime);
+
+        var response = restConfig.givenBackEnd()
+                .contentType(MediaType.APPLICATION_JSON_VALUE)
+                .body(request)
+                .post("/bookings");
+
+        scenarioContext.put("response", response);
     }
 
     @Then("then room should be successfully booked")
     public void themRoomShouldBeSuccessfullyBooked(){
+       var response = scenarioContext.get("response", Response.class);
 
+        response.then()
+                .statusCode(HttpStatus.OK.value());
+    }
+
+    @Then("the bookings should conflict")
+    public void theBookingShouldConflict(){
+        var response = scenarioContext.get("response", Response.class);
+
+        response.then()
+                .statusCode(HttpStatus.CONFLICT.value());
     }
 }
